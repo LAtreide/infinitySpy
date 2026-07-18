@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InfinitySpy — Buscador de Unidades</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #0e0e14; --bg2: #16161f; --bg3: #1f1f2e;
+    --border:  #2e2e44; --accent: #7c5cbf; --accent2: #a07ae0;
+    --text1:   #d0cce8; --text2: #8a85a8; --text3: #5a566e;
+    --green:   #4caf82; --orange: #e0943a; --red: #e05050;
+    --blue:    #4a9fd4; --yellow: #d4c44a; --purple: #b47fea;
+    --type-li: #8a85a8; --type-mi: #7c5cbf; --type-hi: #d4c44a;
+    --type-tag:#e05050; --type-rem:#4a9fd4; --type-sk: #4caf82;
+    --type-wb: #e0943a;
+  }
+
+  body { background:var(--bg); color:var(--text1); font-family:'Segoe UI',system-ui,sans-serif;
+         font-size:13px; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* ── HEADER ── */
+  header {
+    background:var(--bg2); border-bottom:1px solid var(--border);
+    padding:10px 16px; display:flex; align-items:center; gap:12px;
+    flex-shrink:0;
+  }
+  .header-title { font-size:0.95rem; font-weight:700; color:var(--accent2); }
+  .header-sub   { font-size:0.78rem; color:var(--text2); flex:1; }
+  .header-link  { font-size:0.78rem; color:var(--text2); text-decoration:none;
+                  padding:4px 10px; border:1px solid var(--border); border-radius:5px; }
+  .header-link:hover { background:var(--bg3); color:var(--text1); }
+  .lang-toggle { display:flex; gap:3px; }
+  .lang-btn {
+    font-size:0.75rem; font-weight:700; padding:3px 8px;
+    border:1px solid var(--border); border-radius:4px;
+    background:var(--bg3); color:var(--text2); cursor:pointer;
+  }
+  .lang-btn.active { background:rgba(124,92,191,.25); border-color:var(--accent); color:var(--accent2); }
+
+  /* ── LAYOUT ── */
+  .layout { display:grid; grid-template-columns:240px 1fr 340px; flex:1; overflow:hidden; }
+
+  /* ── SIDEBAR FILTROS ── */
+  .sidebar {
+    background:var(--bg2); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .sidebar-inner { overflow-y:auto; flex:1; padding:10px 10px 16px; }
+  .sidebar-inner::-webkit-scrollbar { width:4px; }
+  .sidebar-inner::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  .filter-block { margin-bottom:14px; }
+  .filter-block label { display:block; font-size:0.7rem; font-weight:700; color:var(--text2);
+                         text-transform:uppercase; letter-spacing:.05em; margin-bottom:5px; }
+  .filter-input {
+    width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:5px;
+    color:var(--text1); padding:6px 8px; font-size:0.8rem;
+  }
+  .filter-input:focus { outline:none; border-color:var(--accent); }
+
+  .filter-section-header {
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:0.7rem; font-weight:700; color:var(--text2); text-transform:uppercase;
+    letter-spacing:.05em; margin:14px 0 5px;
+  }
+  .filter-section-header .clear-btn {
+    font-size:0.65rem; color:var(--text3); cursor:pointer; background:none; border:none;
+    padding:1px 4px; border-radius:3px;
+  }
+  .filter-section-header .clear-btn:hover { color:var(--text1); background:var(--bg3); }
+
+  .check-search {
+    width:100%; background:var(--bg); border:1px solid var(--border); border-radius:4px;
+    color:var(--text1); padding:4px 7px; font-size:0.75rem; margin-bottom:4px;
+  }
+  .check-search:focus { outline:none; border-color:var(--accent); }
+
+  .check-list { max-height:200px; overflow-y:auto; }
+  .check-list::-webkit-scrollbar { width:3px; }
+  .check-list::-webkit-scrollbar-thumb { background:var(--border); }
+
+  .check-item {
+    display:flex; align-items:center; gap:6px; padding:3px 2px; cursor:pointer;
+    border-radius:3px; user-select:none;
+  }
+  .check-item:hover { background:var(--bg3); }
+  .check-item input[type=checkbox] { accent-color:var(--accent); flex-shrink:0; }
+  .check-item .check-label { font-size:0.77rem; color:var(--text1); flex:1;
+                              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .check-item .check-count { font-size:0.65rem; color:var(--text3); flex-shrink:0; }
+  .check-item.active .check-label { color:var(--accent2); }
+
+  .mode-row { display:flex; gap:5px; margin-bottom:6px; }
+  .mode-btn {
+    flex:1; padding:4px; font-size:0.7rem; font-weight:600; border-radius:4px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text2); cursor:pointer;
+  }
+  .mode-btn.active { background:rgba(124,92,191,0.25); border-color:var(--accent);
+                     color:var(--accent2); }
+  /* AND/OR inline en cabecera de sección */
+  .mode-mini { display:flex; gap:2px; }
+  .mode-mini-btn {
+    font-size:0.62rem; font-weight:700; padding:1px 5px; border-radius:3px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text3); cursor:pointer;
+  }
+  .mode-mini-btn.active { background:rgba(124,92,191,.25); border-color:var(--accent); color:var(--accent2); }
+  /* Filtros de estadísticas */
+  .stat-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:4px; margin-top:4px; }
+  .stat-input-row { display:flex; align-items:center; gap:3px; }
+  .stat-lbl { font-size:0.68rem; color:var(--text2); min-width:28px; font-weight:700; }
+  .stat-op-btn {
+    font-size:0.65rem; font-weight:700; padding:2px 4px; border-radius:3px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text3);
+    cursor:pointer; flex-shrink:0; min-width:18px; text-align:center;
+  }
+  .stat-op-btn.eq { border-color:rgba(74,159,212,.5); color:var(--blue); background:rgba(74,159,212,.1); }
+  .stat-input {
+    flex:1; background:var(--bg); border:1px solid var(--border); border-radius:3px;
+    color:var(--text1); padding:3px 4px; font-size:0.75rem; min-width:0;
+  }
+  .stat-input:focus { outline:none; border-color:var(--accent); }
+
+  /* ── PANEL UNIDADES ── */
+  .unit-panel { display:flex; flex-direction:column; overflow:hidden; }
+  .unit-panel-header {
+    padding:8px 12px; border-bottom:1px solid var(--border); background:var(--bg2);
+    display:flex; align-items:center; gap:8px; flex-shrink:0;
+  }
+  .unit-count-badge { font-size:0.7rem; font-weight:700; color:var(--text2); }
+
+  .unit-list { overflow-y:auto; flex:1; padding:4px 0; }
+  .unit-list::-webkit-scrollbar { width:5px; }
+  .unit-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  .unit-row {
+    display:flex; align-items:center; gap:8px; padding:7px 12px; cursor:pointer;
+    border-bottom:1px solid rgba(255,255,255,0.03); transition:background .1s;
+  }
+  .unit-row:hover  { background:var(--bg3); }
+  .unit-row.active { background:rgba(124,92,191,0.15); }
+
+  .type-badge {
+    font-size:0.62rem; font-weight:800; padding:1px 5px; border-radius:3px;
+    min-width:30px; text-align:center; flex-shrink:0;
+  }
+  .type-LI  { background:rgba(138,133,168,.15); color:var(--type-li); }
+  .type-MI  { background:rgba(124,92,191,.15);  color:var(--type-mi); }
+  .type-HI  { background:rgba(212,196,74,.15);  color:var(--type-hi); }
+  .type-TAG { background:rgba(224,80,80,.15);   color:var(--type-tag); }
+  .type-REM { background:rgba(74,159,212,.15);  color:var(--type-rem); }
+  .type-SK  { background:rgba(76,175,130,.15);  color:var(--type-sk); }
+  .type-WB  { background:rgba(224,148,58,.15);  color:var(--type-wb); }
+
+  .unit-name { flex:1; font-size:0.82rem; color:var(--text1); font-weight:500;
+               white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .unit-fac  { font-size:0.68rem; color:var(--text3); white-space:nowrap; }
+  .unit-wip  { font-size:0.75rem; font-weight:700; color:var(--yellow); min-width:24px;
+               text-align:center; }
+
+  .unit-empty { padding:24px; text-align:center; color:var(--text2); font-size:0.85rem; }
+
+  /* ── PANEL DETALLE ── */
+  .detail-panel {
+    border-left:1px solid var(--border); background:var(--bg2);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .detail-placeholder { padding:40px 20px; text-align:center; color:var(--text3);
+                         font-size:0.85rem; margin:auto; }
+  .detail-inner { overflow-y:auto; flex:1; padding:14px 16px 20px; }
+  .detail-inner::-webkit-scrollbar { width:4px; }
+  .detail-inner::-webkit-scrollbar-thumb { background:var(--border); }
+
+  .detail-name { font-size:1rem; font-weight:700; color:var(--text1); line-height:1.3; }
+  .detail-meta { display:flex; gap:6px; align-items:center; margin:5px 0 12px; flex-wrap:wrap; }
+  .detail-facs { font-size:0.71rem; color:var(--text2); }
+
+  /* Stats grid */
+  .stats-grid {
+    display:grid; grid-template-columns:repeat(9,1fr); gap:3px; margin-bottom:14px;
+  }
+  .stat-cell { background:var(--bg3); border-radius:4px; text-align:center; padding:4px 2px; }
+  .stat-label { font-size:0.58rem; color:var(--text2); text-transform:uppercase; letter-spacing:.04em; }
+  .stat-value { font-size:0.9rem; font-weight:700; color:var(--text1); }
+
+  /* Profiles table */
+  .section-title { font-size:0.7rem; font-weight:700; color:var(--text2); text-transform:uppercase;
+                    letter-spacing:.05em; margin:12px 0 5px; }
+  .profiles-table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+  .profiles-table th { text-align:left; color:var(--text2); font-size:0.67rem; font-weight:600;
+                        padding:3px 6px; border-bottom:1px solid var(--border); }
+  .profiles-table td { padding:4px 6px; border-bottom:1px solid rgba(255,255,255,0.04); color:var(--text1); }
+  .profiles-table tr:last-child td { border-bottom:none; }
+  .profiles-table tr:hover td { background:var(--bg3); }
+  .prof-cost { color:var(--yellow); font-weight:700; }
+  .prof-swc  { color:var(--orange); }
+  .prof-name-oc::before { content:'👁 '; font-size:0.7em; }
+
+  /* Skills / Equips pills */
+  .pill-list { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+  .pill {
+    font-size:0.71rem; padding:3px 8px; border-radius:12px;
+    background:rgba(124,92,191,.15); border:1px solid rgba(124,92,191,.3);
+    color:var(--accent2); white-space:nowrap; cursor:default;
+  }
+  .pill a {
+    color:inherit; text-decoration:none;
+  }
+  .pill a:hover { text-decoration:underline; }
+  .pill.match { background:rgba(76,175,130,.2); border-color:rgba(76,175,130,.4); color:var(--green); }
+  .pill.equip { background:rgba(74,159,212,.15); border-color:rgba(74,159,212,.3); color:var(--blue); }
+  .pill.equip.match { background:rgba(76,175,130,.2); border-color:rgba(76,175,130,.4); color:var(--green); }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="header-title">🔍 InfinitySpy</span>
+  <span class="header-sub" id="h-sub">Buscador de Unidades — filtra por habilidades y equipo</span>
+  <div class="lang-toggle">
+    <button class="lang-btn" id="lang-es" onclick="setLang('es')">ES</button>
+    <button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button>
+  </div>
+  <a href="index.html" class="header-link" id="h-back">← App principal</a>
+</header>
+
+<div class="layout">
+
+  <!-- ── SIDEBAR FILTROS ── -->
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <div class="filter-block">
+        <label>Nombre</label>
+        <input class="filter-input" type="search" id="name-search" placeholder="Buscar unidad...">
+      </div>
+
+      <div class="filter-block">
+        <label id="lbl-faction">Facción</label>
+        <select class="filter-input" id="faction-select">
+          <option value="">Todas las facciones</option>
+        </select>
+      </div>
+
+      <div class="filter-block">
+        <label id="lbl-type">Tipo</label>
+        <select class="filter-input" id="type-select">
+          <option value="">Todos los tipos</option>
+          <option value="LI">LI — Ligera</option>
+          <option value="MI">MI — Media</option>
+          <option value="HI">HI — Pesada</option>
+          <option value="TAG">TAG — Blindado</option>
+          <option value="REM">REM — Remoto</option>
+          <option value="SK">SK — Eskirmidora</option>
+          <option value="WB">WB — Warband</option>
+        </select>
+      </div>
+
+      <div class="filter-section-header">
+        <span id="lbl-stats">Estadísticas (mínimo)</span>
+        <button class="clear-btn" id="clear-stats" onclick="clearStats()">Limpiar</button>
+      </div>
+      <div class="stat-grid" id="stat-filters">
+        <!-- generado por JS -->
+      </div>
+
+      <div class="filter-section-header" style="margin-top:14px">
+        <span id="lbl-skills">Habilidades</span>
+        <div class="mode-mini">
+          <button class="mode-mini-btn active" id="skills-and" onclick="setGroupMode('skills','AND')">AND</button>
+          <button class="mode-mini-btn" id="skills-or"  onclick="setGroupMode('skills','OR')">OR</button>
+        </div>
+        <button class="clear-btn" id="clear-skills" onclick="clearFilter('skills')">Limpiar</button>
+      </div>
+      <input class="check-search" type="search" id="skill-search" placeholder="Buscar habilidad...">
+      <div class="check-list" id="skill-list"></div>
+
+      <div class="filter-section-header" style="margin-top:14px">
+        <span id="lbl-equips">Equipo</span>
+        <div class="mode-mini">
+          <button class="mode-mini-btn active" id="equips-and" onclick="setGroupMode('equips','AND')">AND</button>
+          <button class="mode-mini-btn" id="equips-or"  onclick="setGroupMode('equips','OR')">OR</button>
+        </div>
+        <button class="clear-btn" id="clear-equips" onclick="clearFilter('equips')">Limpiar</button>
+      </div>
+      <input class="check-search" type="search" id="equip-search" placeholder="Buscar equipo...">
+      <div class="check-list" id="equip-list"></div>
+
+    </div>
+  </aside>
+
+  <!-- ── PANEL UNIDADES ── -->
+  <div class="unit-panel">
+    <div class="unit-panel-header">
+      <span class="unit-count-badge" id="unit-count">Cargando...</span>
+    </div>
+    <div class="unit-list" id="unit-list"></div>
+  </div>
+
+  <!-- ── PANEL DETALLE ── -->
+  <div class="detail-panel" id="detail-panel">
+    <div class="detail-placeholder">Selecciona una unidad para ver sus detalles</div>
+  </div>
+
+</div><!-- .layout -->
+
+<script src="data.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  DATOS
+// ═══════════════════════════════════════════════════════════════════
+
+// Construir mapa unitKey → facciones (nombre + ava)
+const unitFactions = {}; // key → [{name, ava}]
+for (const [fname, fdef] of Object.entries(FACTION_DEFS)) {
+  for (const e of (fdef.units||[])) {
+    if (!unitFactions[e.id]) unitFactions[e.id] = [];
+    unitFactions[e.id].push({ name: fname, ava: e.ava });
+  }
+}
+
+// Lista plana de unidades únicas
+const ALL_UNITS = Object.entries(UNITS).map(([key, u]) => ({
+  key,
+  ...u,
+  factions: unitFactions[key] || [],
+}));
+
+// Función para normalizar texto quitando diacríticos (ā→a, é→e, etc.)
+function norm(s) {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
+// Número de unidades por skill/equip (para el badge de conteo)
+const skillCount = {};
+const equipCount = {};
+for (const u of ALL_UNITS) {
+  for (const id of (u.skills||[])) skillCount[id] = (skillCount[id]||0) + 1;
+  for (const id of (u.equips||[])) equipCount[id] = (equipCount[id]||0) + 1;
+}
+
+// Skills y equips ordenados alfabéticamente
+const SORTED_SKILLS = Object.entries(SKILLS_META)
+  .filter(([id]) => skillCount[+id] > 0)
+  .sort(([,a],[,b]) => a.name.localeCompare(b.name, 'es'));
+const SORTED_EQUIPS = Object.entries(EQUIPS_META)
+  .filter(([id]) => equipCount[+id] > 0)
+  .sort(([,a],[,b]) => a.name.localeCompare(b.name, 'es'));
+
+// ═══════════════════════════════════════════════════════════════════
+//  ESTADO DE FILTROS
+// ═══════════════════════════════════════════════════════════════════
+const state = {
+  name:    '',
+  faction: '',
+  type:    '',
+  skillsMode: 'AND',  // AND = todas las seleccionadas; OR = alguna
+  equipsMode: 'AND',
+  skills:  new Set(),
+  equips:  new Set(),
+  statFilters: {},    // { cc: 14, bs: null, ... }
+  selected: null,
+  lang:    'es',
+};
+
+// ── Helpers de idioma ──
+const I18N = {
+  es: {
+    sub:'Buscador de Unidades — filtra por habilidades y equipo', back:'← App principal',
+    searchUnit:'Buscar unidad...', labelFaction:'Facción', labelType:'Tipo',
+    labelStats:'Estadísticas (mínimo)', labelSkills:'Habilidades', labelEquips:'Equipo',
+    clear:'Limpiar', searchSkill:'Buscar habilidad...', searchEquip:'Buscar equipo...',
+    allFactions:'Todas las facciones', allTypes:'Todos los tipos',
+    armament:'Equipamiento / Armas', pts:'Pts',
+    profiles:'Perfiles', sSkills:'Habilidades', sEquips:'Equipo',
+    units: n => `${n} unidad${n!==1?'es':''}`,
+    noUnits:'No hay unidades que coincidan',
+    selectUnit:'Selecciona una unidad para ver sus detalles',
+    types:{ LI:'LI — Ligera', MI:'MI — Media', HI:'HI — Pesada',
+            TAG:'TAG — Blindado', REM:'REM — Remoto', SK:'SK — Eskirmidora', WB:'WB — Warband' },
+  },
+  en: {
+    sub:'Unit Browser — filter by skills and equipment', back:'← Main app',
+    searchUnit:'Search unit...', labelFaction:'Faction', labelType:'Type',
+    labelStats:'Stats (minimum)', labelSkills:'Skills', labelEquips:'Equipment',
+    clear:'Clear', searchSkill:'Search skill...', searchEquip:'Search equipment...',
+    allFactions:'All factions', allTypes:'All types',
+    armament:'Armament / Weapons', pts:'Pts',
+    profiles:'Profiles', sSkills:'Skills', sEquips:'Equipment',
+    units: n => `${n} unit${n!==1?'s':''}`,
+    noUnits:'No units match the filters',
+    selectUnit:'Select a unit to view its details',
+    types:{ LI:'LI — Light', MI:'MI — Medium', HI:'HI — Heavy',
+            TAG:'TAG — Armored', REM:'REM — Remote', SK:'SK — Skirmisher', WB:'WB — Warband' },
+  },
+};
+
+function t() { return I18N[state.lang]; }
+function mName(m) { return (state.lang==='es' && m.name_es) ? m.name_es : m.name; }
+function mWiki(m) { return (state.lang==='es' && m.wiki_es)  ? m.wiki_es  : m.wiki; }
+
+function setLang(l) {
+  state.lang = l;
+  document.getElementById('lang-es').classList.toggle('active', l==='es');
+  document.getElementById('lang-en').classList.toggle('active', l==='en');
+  applyI18n();
+  buildStatFilters();
+  renderCheckList('skill-list', getSortedSkills(), state.skills, 'skills');
+  renderCheckList('equip-list', getSortedEquips(), state.equips, 'equips');
+  renderUnitList();
+  if (state.selected) renderDetail(state.selected);
+}
+
+function applyI18n() {
+  const s = t();
+  document.getElementById('h-sub').textContent  = s.sub;
+  document.getElementById('h-back').textContent  = s.back;
+  document.getElementById('name-search').placeholder = s.searchUnit;
+  document.getElementById('skill-search').placeholder = s.searchSkill;
+  document.getElementById('equip-search').placeholder = s.searchEquip;
+  document.getElementById('lbl-faction').textContent = s.labelFaction;
+  document.getElementById('lbl-type').textContent    = s.labelType;
+  document.getElementById('lbl-stats').textContent   = s.labelStats;
+  document.getElementById('clear-stats').textContent = s.clear;
+  document.getElementById('lbl-skills').textContent  = s.labelSkills;
+  document.getElementById('lbl-equips').textContent  = s.labelEquips;
+  document.getElementById('clear-skills').textContent = s.clear;
+  document.getElementById('clear-equips').textContent = s.clear;
+  // type select options
+  const ts = document.getElementById('type-select');
+  ts.options[0].textContent = s.allTypes;
+  ['LI','MI','HI','TAG','REM','SK','WB'].forEach((tp,i) => { if(ts.options[i+1]) ts.options[i+1].textContent = s.types[tp]||tp; });
+  // faction select first option
+  document.getElementById('faction-select').options[0].textContent = s.allFactions;
+  // detail placeholder
+  const ph = document.querySelector('.detail-placeholder');
+  if (ph) ph.textContent = s.selectUnit;
+}
+
+function setGroupMode(group, m) {
+  state[group + 'Mode'] = m;
+  document.getElementById(`${group}-and`).classList.toggle('active', m === 'AND');
+  document.getElementById(`${group}-or`).classList.toggle('active',  m === 'OR');
+  renderUnitList();
+}
+
+function clearStats() {
+  state.statFilters = {};
+  buildStatFilters();
+  renderUnitList();
+}
+
+function clearFilter(type) {
+  state[type].clear();
+  document.querySelectorAll(`#${type === 'skills' ? 'skill' : 'equip'}-list input`).forEach(cb => cb.checked = false);
+  document.querySelectorAll(`#${type === 'skills' ? 'skill' : 'equip'}-list .check-item`).forEach(el => el.classList.remove('active'));
+  renderUnitList();
+}
+
+// Construye el grid de filtros de estadísticas
+const STAT_KEYS = ['cc','bs','ph','wip','arm','bts','w','s'];
+const STAT_LABELS_EN = { cc:'CC', bs:'BS', ph:'PH', wip:'WIP', arm:'ARM', bts:'BTS', w:'W', s:'S' };
+const STAT_LABELS_ES = { cc:'CC', bs:'DP', ph:'FIS', wip:'VOL', arm:'BLI', bts:'BTS', w:'H', s:'S' };
+
+function buildStatFilters() {
+  const labels = state.lang === 'es' ? STAT_LABELS_ES : STAT_LABELS_EN;
+  const container = document.getElementById('stat-filters');
+  container.innerHTML = STAT_KEYS.map(stat => {
+    const f   = state.statFilters[stat] || { op: '>=', val: '' };
+    const cls = f.op === '=' ? ' eq' : '';
+    const sym = f.op === '=' ? '=' : '≥';
+    return `<div class="stat-input-row">
+      <span class="stat-lbl">${labels[stat]}</span>
+      <button class="stat-op-btn${cls}" id="op-${stat}" onclick="toggleStatOp('${stat}')" title="${f.op === '=' ? 'Igual a' : 'Mínimo'}">${sym}</button>
+      <input class="stat-input" type="number" min="0" max="30" value="${f.val}"
+             placeholder="-" oninput="setStat('${stat}',this.value)">
+    </div>`;
+  }).join('');
+}
+
+function toggleStatOp(stat) {
+  const f = state.statFilters[stat] || { op: '>=', val: '' };
+  f.op = f.op === '>=' ? '=' : '>=';
+  state.statFilters[stat] = f;
+  const btn = document.getElementById(`op-${stat}`);
+  if (btn) {
+    btn.textContent = f.op === '=' ? '=' : '≥';
+    btn.classList.toggle('eq', f.op === '=');
+    btn.title = f.op === '=' ? 'Igual a' : 'Mínimo';
+  }
+  if (f.val !== '') renderUnitList();
+}
+
+function setStat(stat, val) {
+  const f = state.statFilters[stat] || { op: '>=', val: '' };
+  f.val = val;
+  if (val === '' || val === null) delete state.statFilters[stat];
+  else state.statFilters[stat] = f;
+  renderUnitList();
+}
+function getSortedSkills() {
+  return Object.entries(SKILLS_META)
+    .filter(([id]) => skillCount[+id] > 0)
+    .sort(([,a],[,b]) => mName(a).localeCompare(mName(b), state.lang));
+}
+function getSortedEquips() {
+  return Object.entries(EQUIPS_META)
+    .filter(([id]) => equipCount[+id] > 0)
+    .sort(([,a],[,b]) => mName(a).localeCompare(mName(b), state.lang));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  FILTRADO
+// ═══════════════════════════════════════════════════════════════════
+function getFiltered() {
+  const nameQ     = norm(state.name);
+  const selSkills = [...state.skills];
+  const selEquips = [...state.equips];
+
+  return ALL_UNITS.filter(u => {
+    if (state.type && u.type !== state.type) return false;
+    if (state.faction && !u.factions.some(f => f.name === state.faction)) return false;
+    if (nameQ && !norm(u.name).includes(norm(nameQ))) return false;
+
+    // Filtro de estadísticas
+    for (const [stat, f] of Object.entries(state.statFilters)) {
+      if (!f || f.val === '' || f.val === null || f.val === undefined) continue;
+      const uVal = u[stat] ?? 0;
+      const n    = +f.val;
+      if (f.op === '=')  { if (uVal !== n) return false; }
+      else               { if (uVal <  n) return false; } // >= (mínimo)
+    }
+
+    // Filtro de skills (modo por grupo)
+    if (selSkills.length > 0) {
+      const uSkills = new Set(u.skills||[]);
+      if (state.skillsMode === 'AND') {
+        if (!selSkills.every(id => uSkills.has(+id))) return false;
+      } else {
+        if (!selSkills.some(id => uSkills.has(+id))) return false;
+      }
+    }
+
+    // Filtro de equips (modo por grupo)
+    if (selEquips.length > 0) {
+      const uEquips = new Set(u.equips||[]);
+      if (state.equipsMode === 'AND') {
+        if (!selEquips.every(id => uEquips.has(+id))) return false;
+      } else {
+        if (!selEquips.some(id => uEquips.has(+id))) return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════════════
+function renderUnitList() {
+  const units  = getFiltered();
+  const count  = document.getElementById('unit-count');
+  const list   = document.getElementById('unit-list');
+
+  count.textContent = t().units(units.length);
+
+  if (units.length === 0) {
+    list.innerHTML = '<div class="unit-empty">' + t().noUnits + '</div>';
+    return;
+  }
+
+  list.innerHTML = units.map(u => {
+    const fac = u.factions.length === 1 ? u.factions[0].name
+              : u.factions.length > 1   ? `${u.factions.length} facciones`
+              : '—';
+    const isActive = u.key === state.selected ? ' active' : '';
+    return `<div class="unit-row${isActive}" onclick="selectUnit('${u.key}')">
+      <span class="type-badge type-${u.type}">${u.type}</span>
+      <span class="unit-name" title="${u.name}">${u.name}</span>
+      <span class="unit-fac">${fac}</span>
+      <span class="unit-wip">${u.wip}</span>
+    </div>`;
+  }).join('');
+}
+
+function selectUnit(key) {
+  state.selected = key;
+  // Actualizar clase activa en la lista
+  document.querySelectorAll('.unit-row').forEach(el => el.classList.remove('active'));
+  const rows = document.querySelectorAll('.unit-row');
+  const units = getFiltered();
+  const idx = units.findIndex(u => u.key === key);
+  if (idx >= 0) rows[idx]?.classList.add('active');
+
+  renderDetail(key);
+}
+
+function renderDetail(key) {
+  const u = ALL_UNITS.find(u => u.key === key);
+  if (!u) return;
+  const panel = document.getElementById('detail-panel');
+
+  const selSkills = state.skills;
+  const selEquips = state.equips;
+
+  // Stats row
+  const mov = u.mov || '?';
+  const wStr = u.str > 0 ? `${u.str}S` : `${u.w}W`;
+
+  function statCell(label, value) {
+    return `<div class="stat-cell">
+      <div class="stat-label">${label}</div>
+      <div class="stat-value">${value}</div>
+    </div>`;
+  }
+
+  const statsHtml = `<div class="stats-grid">
+    ${statCell('MOV', mov)}
+    ${statCell('CC',  u.cc)}
+    ${statCell('BS',  u.bs)}
+    ${statCell('PH',  u.ph)}
+    ${statCell('WIP', u.wip)}
+    ${statCell('ARM', u.arm)}
+    ${statCell('BTS', u.bts)}
+    ${statCell('W/S', wStr)}
+    ${statCell('S',   u.s)}
+  </div>`;
+
+  // Profiles
+  const profilesHtml = (u.profiles||[]).length > 0 ? `
+    <div class="section-title">Perfiles</div>
+    <table class="profiles-table">
+      <thead><tr>
+        <th>Equipamiento / Armas</th>
+        <th style="text-align:right">Pts</th>
+        <th style="text-align:right">SWC</th>
+      </tr></thead>
+      <tbody>${(u.profiles||[]).map(p => `
+        <tr>
+          <td class="${p.ocultable ? 'prof-name-oc' : ''}">${p.name}</td>
+          <td class="prof-cost" style="text-align:right">${p.cost}</td>
+          <td class="prof-swc"  style="text-align:right">${p.swc}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>` : '';
+
+  // Skills pills
+  const skillPills = (u.skills||[]).map(id => {
+    const s = SKILLS_META[id];
+    if (!s) return '';
+    const isMatch = selSkills.has(String(id)) ? ' match' : '';
+    const name = mName(s);
+    const wiki = mWiki(s);
+    const link = wiki ? `<a href="${wiki}" target="_blank" rel="noopener">${name}</a>` : name;
+    return `<span class="pill${isMatch}">${link}</span>`;
+  }).filter(Boolean).join('');
+
+  // Equip pills
+  const equipPills = (u.equips||[]).map(id => {
+    const e = EQUIPS_META[id];
+    if (!e) return '';
+    const isMatch = selEquips.has(String(id)) ? ' match' : '';
+    const name = mName(e);
+    const wiki = mWiki(e);
+    const link = wiki ? `<a href="${wiki}" target="_blank" rel="noopener">${name}</a>` : name;
+    return `<span class="pill equip${isMatch}">${link}</span>`;
+  }).filter(Boolean).join('');
+
+  // Factions
+  const facsHtml = u.factions.map(f => `<span class="detail-facs">${f.name} <small>(AVA ${f.ava === 999 ? '∞' : f.ava})</small></span>`).join(' · ');
+
+  panel.innerHTML = `<div class="detail-inner">
+    <div class="detail-name">${u.name}</div>
+    <div class="detail-meta">
+      <span class="type-badge type-${u.type}">${u.type}</span>
+      ${facsHtml}
+    </div>
+
+    ${statsHtml}
+
+    ${profilesHtml}
+
+    ${skillPills ? `<div class="section-title">${t().sSkills}</div>
+    <div class="pill-list">${skillPills}</div>` : ''}
+
+    ${equipPills ? `<div class="section-title">${t().sEquips}</div>
+    <div class="pill-list">${equipPills}</div>` : ''}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  RENDER FILTROS
+// ═══════════════════════════════════════════════════════════════════
+function renderCheckList(containerId, items, stateSet, type) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = items.map(([id, meta]) => {
+    const count = type === 'skills' ? (skillCount[id]||0) : (equipCount[id]||0);
+    const checked = stateSet.has(String(id)) ? ' checked' : '';
+    const active  = stateSet.has(String(id)) ? ' active'  : '';
+    const label   = mName(meta);
+    return `<label class="check-item${active}">
+      <input type="checkbox" value="${id}"${checked} onchange="toggleFilter('${type}',${id},this)">
+      <span class="check-label" title="${label}">${label}</span>
+      <span class="check-count">${count}</span>
+    </label>`;
+  }).join('');
+}
+
+function filterCheckList(searchId, listId, items, stateSet, type) {
+  const q = norm(document.getElementById(searchId).value);
+  const filtered = q ? items.filter(([,m]) => norm(mName(m)).includes(q)) : items;
+  renderCheckList(listId, filtered, stateSet, type);
+}
+
+function toggleFilter(type, id, cb) {
+  const s = state[type];
+  const label = cb.closest('.check-item');
+  if (cb.checked) { s.add(String(id)); label.classList.add('active'); }
+  else            { s.delete(String(id)); label.classList.remove('active'); }
+  renderUnitList();
+  if (state.selected) renderDetail(state.selected);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════════
+(function init() {
+  // Facción select
+  const facSel = document.getElementById('faction-select');
+  const factionNames = Object.keys(FACTION_DEFS).sort((a,b) => a.localeCompare(b,'es'));
+  factionNames.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    facSel.appendChild(opt);
+  });
+
+  // Render listas
+  buildStatFilters();
+  renderCheckList('skill-list', getSortedSkills(), state.skills, 'skills');
+  renderCheckList('equip-list', getSortedEquips(), state.equips, 'equips');
+  renderUnitList();
+
+  // Aplicar idioma inicial
+  document.getElementById('lang-es').classList.add('active');
+  applyI18n();
+
+  // Eventos
+  document.getElementById('name-search').addEventListener('input', e => {
+    state.name = e.target.value;
+    renderUnitList();
+  });
+  document.getElementById('faction-select').addEventListener('change', e => {
+    state.faction = e.target.value;
+    renderUnitList();
+  });
+  document.getElementById('type-select').addEventListener('change', e => {
+    state.type = e.target.value;
+    renderUnitList();
+  });
+  document.getElementById('skill-search').addEventListener('input', e => {
+    filterCheckList('skill-search', 'skill-list', getSortedSkills(), state.skills, 'skills');
+  });
+  document.getElementById('equip-search').addEventListener('input', e => {
+    filterCheckList('equip-search', 'equip-list', getSortedEquips(), state.equips, 'equips');
+  });
+})();
+</script>
+</body>
+</html>
