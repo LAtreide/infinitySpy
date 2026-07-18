@@ -222,7 +222,6 @@
     <button class="lang-btn" id="lang-es" onclick="setLang('es')">ES</button>
     <button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button>
   </div>
-  <a href="index.html" class="header-link" id="h-back">← App principal</a>
 </header>
 
 <div class="layout">
@@ -367,7 +366,7 @@ const state = {
 // ── Helpers de idioma ──
 const I18N = {
   es: {
-    sub:'Buscador de Unidades — filtra por habilidades y equipo', back:'← App principal',
+    sub:'Buscador de Unidades — filtra por habilidades y equipo',
     searchUnit:'Buscar unidad...', labelFaction:'Facción', labelType:'Tipo',
     labelStats:'Estadísticas (mínimo)', labelSkills:'Habilidades', labelEquips:'Equipo',
     clear:'Limpiar', searchSkill:'Buscar habilidad...', searchEquip:'Buscar equipo...',
@@ -381,7 +380,7 @@ const I18N = {
             TAG:'TAG — Blindado', REM:'REM — Remoto', SK:'SK — Eskirmidora', WB:'WB — Warband' },
   },
   en: {
-    sub:'Unit Browser — filter by skills and equipment', back:'← Main app',
+    sub:'Unit Browser — filter by skills and equipment',
     searchUnit:'Search unit...', labelFaction:'Faction', labelType:'Type',
     labelStats:'Stats (minimum)', labelSkills:'Skills', labelEquips:'Equipment',
     clear:'Clear', searchSkill:'Search skill...', searchEquip:'Search equipment...',
@@ -415,7 +414,6 @@ function setLang(l) {
 function applyI18n() {
   const s = t();
   document.getElementById('h-sub').textContent  = s.sub;
-  document.getElementById('h-back').textContent  = s.back;
   document.getElementById('name-search').placeholder = s.searchUnit;
   document.getElementById('skill-search').placeholder = s.searchSkill;
   document.getElementById('equip-search').placeholder = s.searchEquip;
